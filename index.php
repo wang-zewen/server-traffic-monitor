@@ -36,9 +36,9 @@
         .stat-box .value { font-size: 22px; font-weight: bold; color: #2196F3; }
         .stat-box.speed-test .value { color: #FF9800; }
         
-        /* 系统状态 - 2x2 小圆环 */
-        .stat-box.system-status .value { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 5px; }
-        .mini-ring { text-align: center; }
+        /* 系统状态 - 3个圆环一行 */
+        .stat-box.system-status .value { display: flex; justify-content: space-around; gap: 5px; margin-top: 5px; }
+        .mini-ring { text-align: center; flex: 1; }
         .mini-progress { position: relative; width: 50px; height: 50px; margin: 0 auto; }
         .mini-progress svg { transform: rotate(-90deg); }
         .mini-progress circle { fill: none; stroke-width: 4; }
@@ -256,7 +256,6 @@
                             <div class="value" id="${serverId}_status">
                                 ${createMiniRing(0, 'CPU')}
                                 ${createMiniRing(0, '内存')}
-                                ${createMiniRing(0, 'Swap')}
                                 ${createMiniRing(0, '硬盘')}
                             </div>
                         </div>
@@ -303,7 +302,6 @@
                         statusContainer.innerHTML = `
                             ${createMiniRing(data.cpu, 'CPU')}
                             ${createMiniRing(data.memory.percent, '内存')}
-                            ${createMiniRing(data.swap.percent, 'Swap')}
                             ${createMiniRing(data.disk.percent, '硬盘')}
                         `;
                     }
