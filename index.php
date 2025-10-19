@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html>
 <head>
@@ -31,6 +32,8 @@
         
         .status { position: absolute; top: 20px; right: 20px; width: 10px; height: 10px; border-radius: 50%; background: #4CAF50; }
         .server.offline .status { background: #f44336; }
+        
+        .badge { display: inline-block; background: #4CAF50; color: white; padding: 3px 8px; border-radius: 3px; font-size: 11px; margin-left: 8px; }
     </style>
 </head>
 <body>
@@ -47,7 +50,30 @@
     <div class="servers" id="serversContainer"></div>
 
     <script>
-        let servers = JSON.parse(localStorage.getItem('servers') || '[]');
+        // 初始化：检查是否已有服务器列表，如果没有则添加本机
+        function initServers() {
+            let servers = JSON.parse(localStorage.getItem('servers') || '[]');
+            
+            // 如果是第一次访问（没有保存的服务器），自动添加本机
+            if (servers.length === 0) {
+                const hostname = window.location.hostname;
+                const port = window.location.port || '8080';
+                
+                servers.push({
+                    id: Date.now(),
+                    name: '本机服务器',
+                    ip: hostname,
+                    port: port,
+                    isLocal: true
+                });
+                
+                localStorage.setItem('servers', JSON.stringify(servers));
+            }
+            
+            return servers;
+        }
+        
+        let servers = initServers();
         
         function addServer() {
             const name = document.getElementById('serverName').value.trim();
@@ -63,7 +89,8 @@
                 id: Date.now(), 
                 name, 
                 ip, 
-                port 
+                port,
+                isLocal: false
             };
             
             servers.push(server);
@@ -77,6 +104,12 @@
         }
         
         function deleteServer(id) {
+            const server = servers.find(s => s.id === id);
+            if (server && server.isLocal) {
+                alert('不能删除本机服务器');
+                return;
+            }
+            
             if (confirm('确定要删除这个服务器吗？')) {
                 servers = servers.filter(s => s.id !== id);
                 localStorage.setItem('servers', JSON.stringify(servers));
@@ -93,11 +126,17 @@
                 const div = document.createElement('div');
                 div.className = 'server';
                 div.id = serverId;
+                
+                const localBadge = server.isLocal ? '<span class="badge">本机</span>' : '';
+                const deleteBtn = server.isLocal ? 
+                    '<button class="delete-btn" style="opacity: 0.5; cursor: not-allowed;" disabled>本机</button>' :
+                    `<button class="delete-btn" onclick="deleteServer(${server.id})">删除</button>`;
+                
                 div.innerHTML = `
                     <div class="status"></div>
                     <div class="server-header">
-                        <h2>${server.name} <small style="color: #999; font-size: 14px;">(${server.ip}:${server.port})</small></h2>
-                        <button class="delete-btn" onclick="deleteServer(${server.id})">删除</button>
+                        <h2>${server.name}${localBadge} <small style="color: #999; font-size: 14px;">(${server.ip}:${server.port})</small></h2>
+                        ${deleteBtn}
                     </div>
                     <div class="stats">
                         <div class="stat-box">
