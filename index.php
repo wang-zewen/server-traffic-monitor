@@ -255,7 +255,6 @@
                     
                     <div class="stats">
                         <div class="stat-box system-status">
-                            // <h3>💻 系统状态</h3>
                             <div class="value" id="${serverId}_status">
                                 ${createMiniRing(0, 'CPU', '')}
                                 ${createMiniRing(0, '内存', '')}
