@@ -17,7 +17,7 @@
 ### 在每台需要监控的服务器上执行：
 ```bash
 # 下载项目
-git clone https://github.com/你的用户名/server-traffic-monitor.git
+git clone https://github.com/wang-zewen/server-traffic-monitor.git
 cd server-traffic-monitor
 
 # 运行安装脚本
@@ -26,7 +26,7 @@ sudo bash install.sh
 
 ### 或者使用一键命令：
 ```bash
-curl -sSL https://raw.githubusercontent.com/你的用户名/server-traffic-monitor/main/install.sh | sudo bash
+curl -sSL https://raw.githubusercontent.com/wang-zewen/server-traffic-monitor/main/install.sh | sudo bash
 ```
 
 ## 使用方法
