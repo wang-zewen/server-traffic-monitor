@@ -19,6 +19,11 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
+# GitHub 仓库信息
+GITHUB_USER="wang-zewen"
+GITHUB_REPO="server-traffic-monitor"
+RAW_URL="https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/main"
+
 # 检测 PHP 版本
 detect_php_version() {
     if command -v php &> /dev/null; then
@@ -34,7 +39,7 @@ echo -e "${YELLOW}[1/5] 更新软件包列表...${NC}"
 apt update -qq
 
 echo -e "${YELLOW}[2/5] 安装必要软件...${NC}"
-apt install -y vnstat nginx php-fpm php-cli git curl > /dev/null 2>&1
+apt install -y vnstat nginx php-fpm php-cli curl wget > /dev/null 2>&1
 
 # 检测 PHP-FPM socket
 if detect_php_version; then
@@ -54,11 +59,25 @@ systemctl start vnstat
 systemctl enable vnstat > /dev/null 2>&1
 echo -e "${GREEN}✓ vnstat 已启动${NC}"
 
-echo -e "${YELLOW}[4/5] 部署 Web 文件...${NC}"
+echo -e "${YELLOW}[4/5] 下载并部署 Web 文件...${NC}"
 WEB_DIR="/var/www/html/traffic"
 mkdir -p $WEB_DIR
-cp index.php $WEB_DIR/
-cp speed.php $WEB_DIR/
+
+# 下载文件
+echo -e "  下载 index.php..."
+wget -q -O $WEB_DIR/index.php "$RAW_URL/index.php"
+if [ $? -ne 0 ]; then
+    echo -e "${RED}✗ 下载 index.php 失败${NC}"
+    exit 1
+fi
+
+echo -e "  下载 speed.php..."
+wget -q -O $WEB_DIR/speed.php "$RAW_URL/speed.php"
+if [ $? -ne 0 ]; then
+    echo -e "${RED}✗ 下载 speed.php 失败${NC}"
+    exit 1
+fi
+
 chown -R www-data:www-data $WEB_DIR
 chmod -R 755 $WEB_DIR
 echo -e "${GREEN}✓ Web 文件已部署到 $WEB_DIR${NC}"
@@ -91,24 +110,34 @@ rm -f /etc/nginx/sites-enabled/default
 nginx -t > /dev/null 2>&1
 if [ $? -eq 0 ]; then
     systemctl restart nginx
+    systemctl restart php*-fpm
     echo -e "${GREEN}✓ Nginx 配置成功${NC}"
 else
     echo -e "${RED}✗ Nginx 配置失败${NC}"
+    nginx -t
     exit 1
 fi
 
 # 获取服务器 IP
-SERVER_IP=$(curl -s ifconfig.me || hostname -I | awk '{print $1}')
+SERVER_IP=$(curl -s -4 ifconfig.me || hostname -I | awk '{print $1}')
 
 echo ""
 echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}  安装完成！${NC}"
+echo -e "${GREEN}  ✓ 安装完成！${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo ""
 echo -e "访问地址: ${YELLOW}http://${SERVER_IP}:8080${NC}"
 echo ""
 echo -e "${YELLOW}提示:${NC}"
 echo "1. 如果无法访问，请检查防火墙是否开放 8080 端口"
+echo "   Ubuntu/Debian: sudo ufw allow 8080"
+echo "   CentOS/RHEL: sudo firewall-cmd --permanent --add-port=8080/tcp && sudo firewall-cmd --reload"
+echo ""
 echo "2. 云服务器需要在安全组中开放 8080 端口"
+echo ""
 echo "3. 在其他服务器上运行此脚本后，即可添加到监控列表"
+echo ""
+echo "4. 查看服务状态:"
+echo "   - Nginx: systemctl status nginx"
+echo "   - vnstat: systemctl status vnstat"
 echo ""
