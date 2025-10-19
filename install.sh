@@ -84,6 +84,13 @@ if [ $? -ne 0 ]; then
     echo -e "${RED}✗ 下载 speedtest.php 失败${NC}"
     exit 1
 fi
+echo -e "  下载 status.php..."
+wget -q -O $WEB_DIR/status.php "$RAW_URL/status.php"
+if [ $? -ne 0 ]; then
+    echo -e "${RED}✗ 下载 status.php 失败${NC}"
+    exit 1
+fi
+
 
 chown -R www-data:www-data $WEB_DIR
 chmod -R 755 $WEB_DIR
