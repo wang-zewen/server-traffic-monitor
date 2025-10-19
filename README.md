@@ -68,6 +68,3 @@ sudo rm /etc/nginx/sites-available/traffic
 sudo systemctl start nginx
 ```
 
-## 许可证
-
-MIT License
