@@ -18,22 +18,33 @@
         .servers { display: grid; gap: 20px; }
         .server { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); position: relative; }
         .server.offline { opacity: 0.6; background: #f9f9f9; }
-        .server.offline::after { content: '离线'; position: absolute; top: 20px; right: 20px; background: #f44336; color: white; padding: 5px 10px; border-radius: 4px; font-size: 12px; }
+        .server.offline::after { content: '离线'; position: absolute; top: 20px; right: 80px; background: #f44336; color: white; padding: 5px 10px; border-radius: 4px; font-size: 12px; }
         
         .server-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid #2196F3; }
         .server-header h2 { color: #333; font-size: 20px; }
+        .server-actions { display: flex; gap: 10px; }
+        .test-btn { background: #FF9800; color: white; border: none; padding: 5px 15px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+        .test-btn:hover { background: #F57C00; }
+        .test-btn:disabled { background: #ccc; cursor: not-allowed; }
         .delete-btn { background: #f44336; color: white; border: none; padding: 5px 15px; border-radius: 4px; cursor: pointer; font-size: 12px; }
         .delete-btn:hover { background: #d32f2f; }
         
-        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; }
         .stat-box { background: #f9f9f9; padding: 15px; border-radius: 5px; text-align: center; }
         .stat-box h3 { margin-bottom: 10px; color: #666; font-size: 14px; font-weight: normal; }
-        .stat-box .value { font-size: 28px; font-weight: bold; color: #2196F3; }
+        .stat-box .value { font-size: 24px; font-weight: bold; color: #2196F3; }
+        .stat-box.speed-test .value { color: #FF9800; }
         
         .status { position: absolute; top: 20px; right: 20px; width: 10px; height: 10px; border-radius: 50%; background: #4CAF50; }
         .server.offline .status { background: #f44336; }
         
         .badge { display: inline-block; background: #4CAF50; color: white; padding: 3px 8px; border-radius: 3px; font-size: 11px; margin-left: 8px; }
+        
+        .testing { animation: pulse 1.5s ease-in-out infinite; }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
     </style>
 </head>
 <body>
@@ -64,7 +75,8 @@
                     name: '本机服务器',
                     ip: hostname,
                     port: port,
-                    isLocal: true
+                    isLocal: true,
+                    downloadSpeed: '-'
                 });
                 
                 localStorage.setItem('servers', JSON.stringify(servers));
@@ -90,7 +102,8 @@
                 name, 
                 ip, 
                 port,
-                isLocal: false
+                isLocal: false,
+                downloadSpeed: '-'
             };
             
             servers.push(server);
@@ -117,6 +130,61 @@
             }
         }
         
+        // 测速功能
+        async function testSpeed(serverId) {
+            const server = servers.find(s => s.id === serverId);
+            if (!server) return;
+            
+            const btn = document.getElementById(`test_btn_${serverId}`);
+            const valueEl = document.getElementById(`server_${serverId}_speed`);
+            
+            btn.disabled = true;
+            btn.textContent = '测速中...';
+            valueEl.textContent = '测试中...';
+            valueEl.parentElement.classList.add('testing');
+            
+            try {
+                const testSize = 10; // 10MB
+                const url = `http://${server.ip}:${server.port}/speedtest.php?size=${testSize}`;
+                
+                const startTime = performance.now();
+                const response = await fetch(url);
+                
+                if (!response.ok) throw new Error('测速失败');
+                
+                // 读取数据
+                const reader = response.body.getReader();
+                let receivedLength = 0;
+                
+                while(true) {
+                    const {done, value} = await reader.read();
+                    if (done) break;
+                    receivedLength += value.length;
+                }
+                
+                const endTime = performance.now();
+                const duration = (endTime - startTime) / 1000; // 秒
+                const speedMbps = (receivedLength * 8 / 1024 / 1024 / duration).toFixed(2);
+                const speedMBps = (receivedLength / 1024 / 1024 / duration).toFixed(2);
+                
+                const speedText = speedMBps > 1 ? `${speedMBps} MB/s` : `${speedMbps} Mbps`;
+                
+                server.downloadSpeed = speedText;
+                localStorage.setItem('servers', JSON.stringify(servers));
+                
+                valueEl.textContent = speedText;
+                btn.textContent = '重新测速';
+                
+            } catch (error) {
+                console.error('测速失败:', error);
+                valueEl.textContent = '测速失败';
+                btn.textContent = '重试';
+            } finally {
+                btn.disabled = false;
+                valueEl.parentElement.classList.remove('testing');
+            }
+        }
+        
         function renderServers() {
             const container = document.getElementById('serversContainer');
             container.innerHTML = '';
@@ -136,7 +204,10 @@
                     <div class="status"></div>
                     <div class="server-header">
                         <h2>${server.name}${localBadge} <small style="color: #999; font-size: 14px;">(${server.ip}:${server.port})</small></h2>
-                        ${deleteBtn}
+                        <div class="server-actions">
+                            <button class="test-btn" id="test_btn_${server.id}" onclick="testSpeed(${server.id})">测速</button>
+                            ${deleteBtn}
+                        </div>
                     </div>
                     <div class="stats">
                         <div class="stat-box">
@@ -146,6 +217,10 @@
                         <div class="stat-box">
                             <h3>⬇️ 下载速度</h3>
                             <div class="value" id="${serverId}_download">-</div>
+                        </div>
+                        <div class="stat-box speed-test">
+                            <h3>📊 下载测速</h3>
+                            <div class="value" id="${serverId}_speed">${server.downloadSpeed || '-'}</div>
                         </div>
                         <div class="stat-box">
                             <h3>总上传</h3>
