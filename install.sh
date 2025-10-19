@@ -78,6 +78,13 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+echo -e "  下载 speedtest.php..."
+wget -q -O $WEB_DIR/speedtest.php "$RAW_URL/speedtest.php"
+if [ $? -ne 0 ]; then
+    echo -e "${RED}✗ 下载 speedtest.php 失败${NC}"
+    exit 1
+fi
+
 chown -R www-data:www-data $WEB_DIR
 chmod -R 755 $WEB_DIR
 echo -e "${GREEN}✓ Web 文件已部署到 $WEB_DIR${NC}"
@@ -131,13 +138,12 @@ echo ""
 echo -e "${YELLOW}提示:${NC}"
 echo "1. 如果无法访问，请检查防火墙是否开放 8080 端口"
 echo "   Ubuntu/Debian: sudo ufw allow 8080"
-echo "   CentOS/RHEL: sudo firewall-cmd --permanent --add-port=8080/tcp && sudo firewall-cmd --reload"
 echo ""
 echo "2. 云服务器需要在安全组中开放 8080 端口"
 echo ""
 echo "3. 在其他服务器上运行此脚本后，即可添加到监控列表"
 echo ""
-echo "4. 查看服务状态:"
-echo "   - Nginx: systemctl status nginx"
-echo "   - vnstat: systemctl status vnstat"
+echo "4. 点击'测速'按钮可测试到该服务器的下载速度"
 echo ""
+
+chmod +x install
