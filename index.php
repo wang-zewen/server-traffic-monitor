@@ -8,7 +8,8 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: Arial, sans-serif; background: #f5f5f5; padding: 20px; }
         .header { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .header h1 { margin-bottom: 15px; color: #333; }
+        .header h1 { margin-bottom: 5px; color: #333; }
+        .version { color: #999; font-size: 12px; margin-bottom: 15px; }
         
         .add-server { display: flex; gap: 10px; flex-wrap: wrap; }
         .add-server input { padding: 10px; border: 1px solid #ddd; border-radius: 4px; flex: 1; min-width: 200px; }
@@ -18,7 +19,7 @@
         .servers { display: grid; gap: 20px; }
         .server { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); position: relative; }
         .server.offline { opacity: 0.6; background: #f9f9f9; }
-        .server.offline::after { content: '离线'; position: absolute; top: 20px; right: 80px; background: #f44336; color: white; padding: 5px 10px; border-radius: 4px; font-size: 12px; }
+        .server.offline::after { content: '离线'; position: absolute; top: 20px; right: 80px; background: #f44336; color: white; padding: 5px 10px; border-radius: 4px; font-size: 12px; z-index: 10; }
         
         .server-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid #2196F3; }
         .server-header h2 { color: #333; font-size: 20px; }
@@ -29,10 +30,24 @@
         .delete-btn { background: #f44336; color: white; border: none; padding: 5px 15px; border-radius: 4px; cursor: pointer; font-size: 12px; }
         .delete-btn:hover { background: #d32f2f; }
         
-        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; }
+        /* 系统状态圆环 */
+        .system-status { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 15px; padding: 15px; background: #fafafa; border-radius: 5px; }
+        .status-item { text-align: center; }
+        .progress-ring { position: relative; width: 70px; height: 70px; margin: 0 auto; }
+        .progress-ring svg { transform: rotate(-90deg); }
+        .progress-ring circle { fill: none; stroke-width: 6; }
+        .progress-ring .bg { stroke: #e0e0e0; }
+        .progress-ring .progress { stroke: #4CAF50; stroke-linecap: round; transition: stroke-dashoffset 0.5s; }
+        .progress-ring .progress.warning { stroke: #FF9800; }
+        .progress-ring .progress.danger { stroke: #f44336; }
+        .progress-ring .percentage { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 14px; font-weight: bold; color: #333; }
+        .status-item .label { margin-top: 5px; font-size: 12px; color: #666; }
+        .status-item .details { font-size: 11px; color: #999; margin-top: 2px; }
+        
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; }
         .stat-box { background: #f9f9f9; padding: 15px; border-radius: 5px; text-align: center; }
-        .stat-box h3 { margin-bottom: 10px; color: #666; font-size: 14px; font-weight: normal; }
-        .stat-box .value { font-size: 24px; font-weight: bold; color: #2196F3; }
+        .stat-box h3 { margin-bottom: 10px; color: #666; font-size: 13px; font-weight: normal; }
+        .stat-box .value { font-size: 22px; font-weight: bold; color: #2196F3; }
         .stat-box.speed-test .value { color: #FF9800; }
         
         .status { position: absolute; top: 20px; right: 20px; width: 10px; height: 10px; border-radius: 50%; background: #4CAF50; }
@@ -50,6 +65,8 @@
 <body>
     <div class="header">
         <h1>🖥️ 多服务器流量监控</h1>
+        <div class="version">v1.2.0 | <a href="https://github.com/wang-zewen/server-traffic-monitor" target="_blank" style="color: #2196F3; text-decoration: none;">GitHub</a></div>
+        
         <div class="add-server">
             <input type="text" id="serverName" placeholder="服务器名称 (例如: 美国服务器)" />
             <input type="text" id="serverIp" placeholder="IP地址 (例如: 192.168.1.100)" />
@@ -61,11 +78,11 @@
     <div class="servers" id="serversContainer"></div>
 
     <script>
-        // 初始化：检查是否已有服务器列表，如果没有则添加本机
+        const VERSION = '1.2.0';
+        
         function initServers() {
             let servers = JSON.parse(localStorage.getItem('servers') || '[]');
             
-            // 如果是第一次访问（没有保存的服务器），自动添加本机
             if (servers.length === 0) {
                 const hostname = window.location.hostname;
                 const port = window.location.port || '8080';
@@ -130,6 +147,32 @@
             }
         }
         
+        // 创建圆环进度条
+        function createProgressRing(percent, label, details) {
+            const radius = 32;
+            const circumference = 2 * Math.PI * radius;
+            const offset = circumference - (percent / 100) * circumference;
+            
+            let colorClass = '';
+            if (percent > 90) colorClass = 'danger';
+            else if (percent > 70) colorClass = 'warning';
+            
+            return `
+                <div class="status-item">
+                    <div class="progress-ring">
+                        <svg width="70" height="70">
+                            <circle class="bg" cx="35" cy="35" r="${radius}"></circle>
+                            <circle class="progress ${colorClass}" cx="35" cy="35" r="${radius}"
+                                style="stroke-dasharray: ${circumference}; stroke-dashoffset: ${offset};"></circle>
+                        </svg>
+                        <div class="percentage">${percent}%</div>
+                    </div>
+                    <div class="label">${label}</div>
+                    <div class="details">${details}</div>
+                </div>
+            `;
+        }
+        
         // 测速功能
         async function testSpeed(serverId) {
             const server = servers.find(s => s.id === serverId);
@@ -144,7 +187,7 @@
             valueEl.parentElement.classList.add('testing');
             
             try {
-                const testSize = 10; // 10MB
+                const testSize = 10;
                 const url = `http://${server.ip}:${server.port}/speedtest.php?size=${testSize}`;
                 
                 const startTime = performance.now();
@@ -152,7 +195,6 @@
                 
                 if (!response.ok) throw new Error('测速失败');
                 
-                // 读取数据
                 const reader = response.body.getReader();
                 let receivedLength = 0;
                 
@@ -163,7 +205,7 @@
                 }
                 
                 const endTime = performance.now();
-                const duration = (endTime - startTime) / 1000; // 秒
+                const duration = (endTime - startTime) / 1000;
                 const speedMbps = (receivedLength * 8 / 1024 / 1024 / duration).toFixed(2);
                 const speedMBps = (receivedLength / 1024 / 1024 / duration).toFixed(2);
                 
@@ -209,6 +251,14 @@
                             ${deleteBtn}
                         </div>
                     </div>
+                    
+                    <div class="system-status" id="${serverId}_status">
+                        ${createProgressRing(0, 'CPU', '-')}
+                        ${createProgressRing(0, '内存', '0 MB / 0 MB')}
+                        ${createProgressRing(0, 'Swap', '0 MB / 0 MB')}
+                        ${createProgressRing(0, '硬盘', '0 GB / 0 GB')}
+                    </div>
+                    
                     <div class="stats">
                         <div class="stat-box">
                             <h3>⬆️ 上传速度</h3>
@@ -240,6 +290,28 @@
             }
         }
         
+        function updateServerStatus(server) {
+            const serverId = `server_${server.id}`;
+            const url = `http://${server.ip}:${server.port}/status.php`;
+            
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    const statusContainer = document.getElementById(`${serverId}_status`);
+                    if (statusContainer) {
+                        statusContainer.innerHTML = `
+                            ${createProgressRing(data.cpu, 'CPU', '-')}
+                            ${createProgressRing(data.memory.percent, '内存', `${data.memory.used} MB / ${data.memory.total} MB`)}
+                            ${createProgressRing(data.swap.percent, 'Swap', `${data.swap.used} MB / ${data.swap.total} MB`)}
+                            ${createProgressRing(data.disk.percent, '硬盘', `${data.disk.used} GB / ${data.disk.total} GB`)}
+                        `;
+                    }
+                })
+                .catch(error => {
+                    console.error(`${server.name} 状态获取失败:`, error);
+                });
+        }
+        
         function updateServer(server) {
             const serverId = `server_${server.id}`;
             const url = `http://${server.ip}:${server.port}/speed.php`;
@@ -257,6 +329,9 @@
                     document.getElementById(serverId).classList.add('offline');
                     console.error(`${server.name} 连接失败:`, error);
                 });
+            
+            // 同时更新系统状态
+            updateServerStatus(server);
         }
         
         function updateAll() {
