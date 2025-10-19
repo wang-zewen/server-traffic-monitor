@@ -30,26 +30,24 @@
         .delete-btn { background: #f44336; color: white; border: none; padding: 5px 15px; border-radius: 4px; cursor: pointer; font-size: 12px; }
         .delete-btn:hover { background: #d32f2f; }
         
-        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; }
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; }
         .stat-box { background: #f9f9f9; padding: 15px; border-radius: 5px; text-align: center; }
         .stat-box h3 { margin-bottom: 10px; color: #666; font-size: 13px; font-weight: normal; }
         .stat-box .value { font-size: 22px; font-weight: bold; color: #2196F3; }
         .stat-box.speed-test .value { color: #FF9800; }
         
-        /* 系统状态 - 放在一个 stat-box 里 */
-        .stat-box.system-status { padding: 10px; }
-        .system-status-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
-        .status-item { text-align: center; }
-        .progress-ring { position: relative; width: 60px; height: 60px; margin: 0 auto; }
-        .progress-ring svg { transform: rotate(-90deg); }
-        .progress-ring circle { fill: none; stroke-width: 5; }
-        .progress-ring .bg { stroke: #e0e0e0; }
-        .progress-ring .progress { stroke: #4CAF50; stroke-linecap: round; transition: stroke-dashoffset 0.5s; }
-        .progress-ring .progress.warning { stroke: #FF9800; }
-        .progress-ring .progress.danger { stroke: #f44336; }
-        .progress-ring .percentage { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 11px; font-weight: bold; color: #333; }
-        .status-item .label { margin-top: 3px; font-size: 10px; color: #666; }
-        .status-item .details { font-size: 9px; color: #999; margin-top: 1px; }
+        /* 系统状态 - 2x2 小圆环 */
+        .stat-box.system-status .value { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 5px; }
+        .mini-ring { text-align: center; }
+        .mini-progress { position: relative; width: 50px; height: 50px; margin: 0 auto; }
+        .mini-progress svg { transform: rotate(-90deg); }
+        .mini-progress circle { fill: none; stroke-width: 4; }
+        .mini-progress .bg { stroke: #e0e0e0; }
+        .mini-progress .progress { stroke: #4CAF50; stroke-linecap: round; transition: stroke-dashoffset 0.5s; }
+        .mini-progress .progress.warning { stroke: #FF9800; }
+        .mini-progress .progress.danger { stroke: #f44336; }
+        .mini-progress .percent { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 10px; font-weight: bold; color: #333; }
+        .mini-ring .label { font-size: 10px; color: #666; margin-top: 3px; }
         
         .status { position: absolute; top: 20px; right: 20px; width: 10px; height: 10px; border-radius: 50%; background: #4CAF50; }
         .server.offline .status { background: #f44336; }
@@ -148,9 +146,9 @@
             }
         }
         
-        // 创建单个圆环进度条
-        function createProgressRing(percent, label, details) {
-            const radius = 27;
+        // 创建迷你圆环
+        function createMiniRing(percent, label) {
+            const radius = 23;
             const circumference = 2 * Math.PI * radius;
             const offset = circumference - (percent / 100) * circumference;
             
@@ -159,17 +157,16 @@
             else if (percent > 70) colorClass = 'warning';
             
             return `
-                <div class="status-item">
-                    <div class="progress-ring">
-                        <svg width="60" height="60">
-                            <circle class="bg" cx="30" cy="30" r="${radius}"></circle>
-                            <circle class="progress ${colorClass}" cx="30" cy="30" r="${radius}"
+                <div class="mini-ring">
+                    <div class="mini-progress">
+                        <svg width="50" height="50">
+                            <circle class="bg" cx="25" cy="25" r="${radius}"></circle>
+                            <circle class="progress ${colorClass}" cx="25" cy="25" r="${radius}"
                                 style="stroke-dasharray: ${circumference}; stroke-dashoffset: ${offset};"></circle>
                         </svg>
-                        <div class="percentage">${percent}%</div>
+                        <div class="percent">${percent}%</div>
                     </div>
                     <div class="label">${label}</div>
-                    <div class="details">${details}</div>
                 </div>
             `;
         }
@@ -256,11 +253,11 @@
                     <div class="stats">
                         <div class="stat-box system-status">
                             <h3>💻 系统状态</h3>
-                            <div class="system-status-grid" id="${serverId}_status">
-                                ${createProgressRing(0, 'CPU', '-')}
-                                ${createProgressRing(0, '内存', '0 MB')}
-                                ${createProgressRing(0, 'Swap', '0 MB')}
-                                ${createProgressRing(0, '硬盘', '0 GB')}
+                            <div class="value" id="${serverId}_status">
+                                ${createMiniRing(0, 'CPU')}
+                                ${createMiniRing(0, '内存')}
+                                ${createMiniRing(0, 'Swap')}
+                                ${createMiniRing(0, '硬盘')}
                             </div>
                         </div>
                         
@@ -304,10 +301,10 @@
                     const statusContainer = document.getElementById(`${serverId}_status`);
                     if (statusContainer) {
                         statusContainer.innerHTML = `
-                            ${createProgressRing(data.cpu, 'CPU', '-')}
-                            ${createProgressRing(data.memory.percent, '内存', `${data.memory.used} MB`)}
-                            ${createProgressRing(data.swap.percent, 'Swap', `${data.swap.used} MB`)}
-                            ${createProgressRing(data.disk.percent, '硬盘', `${data.disk.used} GB`)}
+                            ${createMiniRing(data.cpu, 'CPU')}
+                            ${createMiniRing(data.memory.percent, '内存')}
+                            ${createMiniRing(data.swap.percent, 'Swap')}
+                            ${createMiniRing(data.disk.percent, '硬盘')}
                         `;
                     }
                 })
