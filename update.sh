@@ -35,7 +35,7 @@ echo ""
 
 echo -e "${YELLOW}正在下载最新版本...${NC}"
 
-for file in index.php speed.php speedtest.php status.php; do
+for file in index.php speed.php speedtest.php status.php servers.php; do
     echo -e "  更新 $file..."
     wget -q -O $WEB_DIR/$file "$RAW_URL/$file"
     if [ $? -ne 0 ]; then
@@ -44,6 +44,8 @@ for file in index.php speed.php speedtest.php status.php; do
     fi
 done
 
+# 确保数据目录存在
+mkdir -p $WEB_DIR/data
 chown -R www-data:www-data $WEB_DIR
 chmod -R 755 $WEB_DIR
 
