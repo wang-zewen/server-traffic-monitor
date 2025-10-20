@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html>
 <head>
@@ -64,7 +65,7 @@
 <body>
     <div class="header">
         <h1>🖥️ 多服务器流量监控</h1>
-        <div class="version">v1.2.1 | <a href="https://github.com/wang-zewen/server-traffic-monitor" target="_blank" style="color: #2196F3; text-decoration: none;">GitHub</a></div>
+        <div class="version">v1.3.0 | <a href="https://github.com/wang-zewen/server-traffic-monitor" target="_blank" style="color: #2196F3; text-decoration: none;">GitHub</a></div>
         
         <div class="add-server">
             <input type="text" id="serverName" placeholder="服务器名称 (例如: 美国服务器)" />
@@ -77,33 +78,56 @@
     <div class="servers" id="serversContainer"></div>
 
     <script>
-        const VERSION = '1.2.1';
+        const VERSION = '1.3.0';
+        let servers = [];
         
-        function initServers() {
-            let servers = JSON.parse(localStorage.getItem('servers') || '[]');
-            
-            if (servers.length === 0) {
-                const hostname = window.location.hostname;
-                const port = window.location.port || '8080';
+        // 从服务器加载服务器列表
+        async function loadServers() {
+            try {
+                const response = await fetch('servers.php');
+                const data = await response.json();
+                servers = data;
                 
-                servers.push({
-                    id: Date.now(),
-                    name: '本机服务器',
-                    ip: hostname,
-                    port: port,
-                    isLocal: true,
-                    downloadSpeed: '-'
-                });
+                // 如果没有服务器，自动添加本机
+                if (servers.length === 0) {
+                    const hostname = window.location.hostname;
+                    const port = window.location.port || '8080';
+                    
+                    servers.push({
+                        id: Date.now(),
+                        name: '本机服务器',
+                        ip: hostname,
+                        port: port,
+                        isLocal: true,
+                        downloadSpeed: '-'
+                    });
+                    
+                    await saveServers();
+                }
                 
-                localStorage.setItem('servers', JSON.stringify(servers));
+                renderServers();
+                updateAll();
+            } catch (error) {
+                console.error('加载服务器列表失败:', error);
             }
-            
-            return servers;
         }
         
-        let servers = initServers();
+        // 保存服务器列表到服务器
+        async function saveServers() {
+            try {
+                await fetch('servers.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(servers)
+                });
+            } catch (error) {
+                console.error('保存服务器列表失败:', error);
+            }
+        }
         
-        function addServer() {
+        async function addServer() {
             const name = document.getElementById('serverName').value.trim();
             const ip = document.getElementById('serverIp').value.trim();
             const port = document.getElementById('serverPort').value.trim() || '8080';
@@ -123,7 +147,7 @@
             };
             
             servers.push(server);
-            localStorage.setItem('servers', JSON.stringify(servers));
+            await saveServers();
             
             document.getElementById('serverName').value = '';
             document.getElementById('serverIp').value = '';
@@ -132,7 +156,7 @@
             renderServers();
         }
         
-        function deleteServer(id) {
+        async function deleteServer(id) {
             const server = servers.find(s => s.id === id);
             if (server && server.isLocal) {
                 alert('不能删除本机服务器');
@@ -141,7 +165,7 @@
             
             if (confirm('确定要删除这个服务器吗？')) {
                 servers = servers.filter(s => s.id !== id);
-                localStorage.setItem('servers', JSON.stringify(servers));
+                await saveServers();
                 renderServers();
             }
         }
@@ -213,7 +237,7 @@
                 const speedText = speedMBps > 1 ? `${speedMBps} MB/s` : `${speedMbps} Mbps`;
                 
                 server.downloadSpeed = speedText;
-                localStorage.setItem('servers', JSON.stringify(servers));
+                await saveServers();
                 
                 valueEl.textContent = speedText;
                 btn.textContent = '重新测速';
@@ -304,9 +328,9 @@
                         // CPU总核心数
                         const cpuTotal = data.cpu_cores ? `${data.cpu_cores}核` : '';
                         // 内存总大小
-                        const memTotal = data.memory.total || '';
+                        const memTotal = data.memory.total ? `${data.memory.total} MB` : '';
                         // 硬盘总大小
-                        const diskTotal = data.disk.total || '';
+                        const diskTotal = data.disk.total ? `${data.disk.total} GB` : '';
                         
                         statusContainer.innerHTML = `
                             ${createMiniRing(data.cpu, 'CPU', cpuTotal)}
@@ -347,8 +371,7 @@
         }
         
         // 初始化
-        renderServers();
-        updateAll();
+        loadServers();
         setInterval(updateAll, 2000); // 每2秒更新一次
     </script>
 </body>
